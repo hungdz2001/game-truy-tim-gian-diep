@@ -75,6 +75,33 @@ test('join requires the active room code and locked lobby only allows token reco
   assert.equal(rejoined.player.id, joined.player.id);
 });
 
+test('players can join the active room without entering a room code', () => {
+  const state = createRoom(createInitialState(), { roomCode: 'SPY-2026', now: 1000 });
+
+  const joined = joinPlayer(state, { name: 'Lan', token: 'lan-token', now: 1001 });
+
+  assert.equal(joined.player.name, 'Lan');
+  assert.equal(joined.player.id, 'p1');
+  assert.equal(state.joinOrder.length, 1);
+
+  startRound(state, {
+    spyCount: 1,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  assert.throws(
+    () => joinPlayer(state, { name: 'Minh', token: 'minh-token', now: 2001 }),
+    /Phòng đã khóa/
+  );
+
+  const rejoined = joinPlayer(state, { name: 'Lan', token: 'lan-token', now: 2002 });
+  assert.equal(rejoined.rejoined, true);
+  assert.equal(rejoined.player.id, joined.player.id);
+});
+
 test('starting rounds draws spies from the spy pool without repeating until the pool is empty', () => {
   const { state, players } = makeRoom(['An', 'Binh', 'Chi']);
 

@@ -30,7 +30,8 @@ function createRoom(state, { roomCode, now = Date.now() }) {
 
 function joinPlayer(state, { roomCode, name, token, now = Date.now() }) {
   assertRoom(state);
-  if (normalizeRoomCode(roomCode) !== state.roomCode) {
+  const requestedRoomCode = String(roomCode || '').trim();
+  if (requestedRoomCode && normalizeRoomCode(requestedRoomCode) !== state.roomCode) {
     throw new Error('Mã phòng không đúng.');
   }
 

@@ -3,7 +3,6 @@ const ui = window.SpyGameUI;
 
 const TOKEN_KEY = 'spyGamePlayerToken';
 const NAME_KEY = 'spyGamePlayerName';
-const ROOM_KEY = 'spyGameRoomCode';
 
 let roomState = null;
 let playerState = null;
@@ -15,7 +14,6 @@ const el = {
   scorePill: document.getElementById('score-pill'),
   timerPill: document.getElementById('timer-pill'),
   joinForm: document.getElementById('join-form'),
-  roomCode: document.getElementById('room-code'),
   playerName: document.getElementById('player-name'),
   lobbyMessage: document.getElementById('lobby-message'),
   waitingMessage: document.getElementById('waiting-message'),
@@ -39,20 +37,18 @@ const el = {
   finalRanks: document.getElementById('final-ranks'),
 };
 
-el.roomCode.value = localStorage.getItem(ROOM_KEY) || '';
 el.playerName.value = localStorage.getItem(NAME_KEY) || '';
 
 el.joinForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const roomCode = el.roomCode.value.trim();
   const name = el.playerName.value.trim();
-  if (!roomCode || !name) {
-    setMessage(el.lobbyMessage, 'Nhập đủ mã phòng và tên hiển thị.');
+  if (!name) {
+    setMessage(el.lobbyMessage, 'Nhập tên hiển thị để tham gia.');
     return;
   }
 
   const token = localStorage.getItem(TOKEN_KEY) || createToken();
-  const result = await emitAck('player:join', { roomCode, name, token });
+  const result = await emitAck('player:join', { name, token });
   if (!result.ok) {
     setMessage(el.lobbyMessage, result.message);
     return;
@@ -60,7 +56,6 @@ el.joinForm.addEventListener('submit', async (event) => {
 
   localStorage.setItem(TOKEN_KEY, result.token);
   localStorage.setItem(NAME_KEY, name);
-  localStorage.setItem(ROOM_KEY, roomCode.toUpperCase());
   setMessage(el.lobbyMessage, '');
 });
 
@@ -164,20 +159,18 @@ function render() {
 async function attemptAutoJoin() {
   if (playerState?.player) return;
   const token = localStorage.getItem(TOKEN_KEY);
-  const roomCode = localStorage.getItem(ROOM_KEY);
   const name = localStorage.getItem(NAME_KEY);
-  if (!token || !roomCode || !name) return;
+  if (!token || !name) return;
 
-  const result = await emitAck('player:join', { roomCode, name, token });
+  const result = await emitAck('player:join', { name, token });
   if (result.ok) {
     localStorage.setItem(TOKEN_KEY, result.token);
   }
 }
 
 function renderHeader() {
-  const roomCode = roomState?.roomCode || playerState?.roomCode || '--';
   const score = playerState?.player?.score || 0;
-  el.roomPill.textContent = `ROOM ${roomCode || '--'}`;
+  el.roomPill.textContent = roomState?.roomCode ? 'PHÒNG NỘI BỘ' : 'CHƯA MỞ';
   el.scorePill.textContent = `${score} điểm`;
   renderTimer();
 }
