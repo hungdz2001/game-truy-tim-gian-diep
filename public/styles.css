@@ -55,7 +55,7 @@ body {
   min-height: 100svh;
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 220px),
+    linear-gradient(180deg, rgba(55, 217, 194, 0.06), transparent 180px),
     var(--surface-page);
   color: var(--color-text);
   font-family: "Segoe UI", Arial, sans-serif;
@@ -145,8 +145,8 @@ p {
 
 .topbar {
   display: grid;
-  gap: var(--space-3);
-  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4) var(--space-3);
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) var(--space-4) 10px;
   border-bottom: 1px solid var(--color-line-soft);
   background: rgba(15, 16, 18, 0.94);
   backdrop-filter: blur(14px);
@@ -167,9 +167,9 @@ p {
 }
 
 .brand-mark {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   border: 1px solid rgba(55, 217, 194, 0.8);
   border-radius: 50%;
   background:
@@ -184,7 +184,7 @@ p {
 
 .brand h1 {
   color: var(--color-text);
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.15;
 }
 
@@ -207,7 +207,7 @@ p {
 }
 
 .pill {
-  min-height: 36px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -215,7 +215,7 @@ p {
   border-radius: var(--radius-md);
   background: var(--surface-panel-raised);
   color: var(--color-soft);
-  padding: var(--space-2);
+  padding: 6px var(--space-2);
   font-size: 12px;
   font-weight: 800;
   text-align: center;
@@ -259,7 +259,7 @@ p {
 }
 
 .panel-content {
-  min-height: calc(100svh - 156px);
+  min-height: calc(100svh - 122px);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -271,11 +271,16 @@ p {
   gap: var(--space-2);
 }
 
-.screen-head h2,
+.screen-head h2 {
+  color: var(--color-text);
+  font-size: clamp(28px, 7vw, 36px);
+  line-height: 1.12;
+}
+
 .panel h2 {
   color: var(--color-text);
   font-size: 24px;
-  line-height: 1.12;
+  line-height: 1.14;
 }
 
 .screen-head p,
@@ -384,15 +389,14 @@ p {
 
 .phase-line {
   display: grid;
-  grid-template-columns: repeat(5, minmax(74px, 1fr));
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding-bottom: 1px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  overflow: hidden;
 }
 
 .phase-step,
 .phase-line span {
-  min-height: 34px;
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -400,8 +404,8 @@ p {
   border-radius: var(--radius-sm);
   background: var(--surface-panel-raised);
   color: var(--color-muted);
-  padding: var(--space-2);
-  font-size: 11px;
+  padding: 6px 5px;
+  font-size: 10px;
   font-weight: 900;
   text-align: center;
   white-space: nowrap;
@@ -673,7 +677,7 @@ p {
 
 .primary-action-card {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   border: 1px solid rgba(55, 217, 194, 0.35);
   border-radius: var(--radius-md);
   background: var(--surface-selected);
@@ -682,11 +686,53 @@ p {
 
 .primary-action-card h2 {
   margin-top: var(--space-1);
+  font-size: 30px;
 }
 
 .room-create-form {
   display: grid;
   gap: var(--space-3);
+}
+
+.join-card {
+  border: 1px solid var(--color-line-soft);
+  border-radius: var(--radius-md);
+  background: rgba(21, 23, 26, 0.72);
+  box-shadow: var(--shadow-soft);
+  padding: var(--space-4);
+}
+
+.join-card .action-dock {
+  position: static;
+  margin-top: var(--space-2);
+  padding: 0;
+  background: transparent;
+}
+
+.player-shell[data-screen="screen-lobby"] .phase-line {
+  display: none;
+}
+
+.player-shell[data-screen="screen-lobby"] .panel-content {
+  min-height: calc(100svh - 96px);
+  justify-content: flex-start;
+}
+
+.admin-shell[data-phase="setup"] .command-top,
+.admin-shell[data-phase="setup"] .admin-phase-line,
+.admin-shell[data-phase="setup"] .admin-layout {
+  display: none;
+}
+
+.admin-shell[data-phase="setup"] .admin-command-panel {
+  margin-top: var(--space-3);
+  gap: var(--space-4);
+}
+
+.admin-shell[data-phase="setup"] .primary-action-card {
+  background:
+    linear-gradient(135deg, rgba(55, 217, 194, 0.18), rgba(55, 217, 194, 0.04)),
+    var(--surface-panel-raised);
 }
 
 .admin-layout {

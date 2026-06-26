@@ -381,6 +381,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
   const screen = document.getElementById(id);
   if (screen) screen.classList.add('active');
+  document.querySelector('.player-shell')?.setAttribute('data-screen', id);
 }
 
 function setMessage(node, text, tone = '') {

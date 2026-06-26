@@ -24,17 +24,24 @@
 }
 
 .player-shell .panel-content {
-  min-height: calc(100svh - 154px);
+  min-height: calc(100svh - 118px);
 }
 
-.player-shell .join-card,
 .player-shell .description-form,
 .player-shell .vote-form {
-  margin-top: auto;
+  margin-top: var(--space-2);
 }
 
 .player-shell .phase-line.compact {
-  grid-template-columns: repeat(5, minmax(68px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.player-shell .topbar {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+}
+
+.player-shell .hero-content {
+  gap: var(--space-4);
 }
 
 @media (prefers-reduced-motion: reduce) {
