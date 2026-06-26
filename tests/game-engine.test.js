@@ -57,6 +57,7 @@ test('join requires the active room code and locked lobby only allows token reco
   );
 
   const joined = joinPlayer(state, { roomCode: 'SPY-2026', name: 'Lan', token: 'lan-token', now: 1001 });
+  joinPlayer(state, { roomCode: 'SPY-2026', name: 'Binh', token: 'binh-token', now: 1002 });
   startRound(state, {
     spyCount: 1,
     civilianKeyword: 'Tuổi trẻ',
@@ -67,7 +68,7 @@ test('join requires the active room code and locked lobby only allows token reco
 
   assert.throws(
     () => joinPlayer(state, { roomCode: 'SPY-2026', name: 'Minh', token: 'minh-token', now: 2001 }),
-    /Phòng đã khóa/
+    /Game đã khóa/
   );
 
   const rejoined = joinPlayer(state, { roomCode: 'SPY-2026', name: 'Lan', token: 'lan-token', now: 2002 });
@@ -83,6 +84,7 @@ test('players can join the active room without entering a room code', () => {
   assert.equal(joined.player.name, 'Lan');
   assert.equal(joined.player.id, 'p1');
   assert.equal(state.joinOrder.length, 1);
+  joinPlayer(state, { name: 'Binh', token: 'binh-token', now: 1002 });
 
   startRound(state, {
     spyCount: 1,
@@ -94,7 +96,7 @@ test('players can join the active room without entering a room code', () => {
 
   assert.throws(
     () => joinPlayer(state, { name: 'Minh', token: 'minh-token', now: 2001 }),
-    /Phòng đã khóa/
+    /Game đã khóa/
   );
 
   const rejoined = joinPlayer(state, { name: 'Lan', token: 'lan-token', now: 2002 });
@@ -195,7 +197,35 @@ test('vote submission must choose exactly spyCount targets and cannot include se
   );
 });
 
-test('round scoring rewards civilians for correct spy picks and penalizes spies by votes received', () => {
+test('votes only open after the admin opens the voting phase', () => {
+  const { state, players } = makeRoom(['An', 'Binh', 'Chi']);
+  startRound(state, {
+    spyCount: 1,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  for (const player of players) {
+    submitDescription(state, { playerId: player.id, text: `Hint ${player.name}`, now: 2500 });
+  }
+  endDescriptionPhase(state, { now: 3000 });
+
+  assert.equal(state.phase, 'summary');
+  assert.throws(
+    () => submitVote(state, { voterId: players[1].id, targetIds: [players[0].id], now: 3100 }),
+    /voting/
+  );
+
+  openVote(state, { now: 3200 });
+  assert.equal(state.phase, 'voting');
+  assert.doesNotThrow(() =>
+    submitVote(state, { voterId: players[1].id, targetIds: [players[0].id], now: 3300 })
+  );
+});
+
+test('round scoring normalizes civilian and spy role points fairly', () => {
   const { state, players } = makeRoom(['An', 'Binh', 'Chi', 'Dung']);
   startRound(state, {
     spyCount: 1,
@@ -225,8 +255,116 @@ test('round scoring rewards civilians for correct spy picks and penalizes spies 
   assert.equal(byId[players[0].id].delta, 10);
   assert.equal(byId[players[2].id].delta, 10);
   assert.equal(byId[players[3].id].delta, 0);
-  assert.equal(byId[spy.id].delta, -10);
+  assert.equal(byId[spy.id].delta, 3.3);
+  assert.equal(byId[spy.id].roleScore, 3.3);
+  assert.equal(byId[spy.id].behaviorPenalty, 0);
   assert.equal(byId[spy.id].votesAgainst, 2);
+});
+
+test('civilian role score is proportional to correct spy guesses', () => {
+  const { state, players } = makeRoom(['An', 'Binh', 'Chi', 'Dung', 'Em', 'Giang']);
+  startRound(state, {
+    spyCount: 3,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  for (const player of players) {
+    submitDescription(state, { playerId: player.id, text: `${player.name} hint`, now: 2100 });
+  }
+  endDescriptionPhase(state, { now: 3000 });
+  openVote(state, { now: 3100 });
+
+  submitVote(state, {
+    voterId: players[3].id,
+    targetIds: [players[0].id, players[1].id, players[4].id],
+    now: 3200,
+  });
+  for (const player of [players[0], players[1], players[2], players[4], players[5]]) {
+    submitVote(state, {
+      voterId: player.id,
+      targetIds: [players[0].id, players[1].id, players[2].id].filter((id) => id !== player.id).concat(players[3].id).slice(0, 3),
+      now: 3210,
+    });
+  }
+
+  const result = endVotePhase(state, { now: 4000 });
+  const civilian = result.playerResults.find((row) => row.playerId === players[3].id);
+
+  assert.equal(civilian.correctGuessCount, 2);
+  assert.equal(civilian.roleScore, 6.7);
+  assert.equal(civilian.behaviorPenalty, 0);
+  assert.equal(civilian.delta, 6.7);
+});
+
+test('missing vote applies a behavior penalty without blocking role points', () => {
+  const { state, players } = makeRoom(['An', 'Binh', 'Chi']);
+  startRound(state, {
+    spyCount: 1,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  for (const player of players) {
+    submitDescription(state, { playerId: player.id, text: `${player.name} hint`, now: 2100 });
+  }
+  endDescriptionPhase(state, { now: 3000 });
+  openVote(state, { now: 3100 });
+  submitVote(state, { voterId: players[2].id, targetIds: [players[0].id], now: 3200 });
+
+  const result = endVotePhase(state, { now: 4000 });
+  const missingVoter = result.playerResults.find((row) => row.playerId === players[1].id);
+
+  assert.equal(missingVoter.missedVote, true);
+  assert.equal(missingVoter.roleScore, 0);
+  assert.equal(missingVoter.behaviorPenalty, -5);
+  assert.equal(missingVoter.delta, -5);
+});
+
+test('missing both description and vote applies both behavior penalties', () => {
+  const { state, players } = makeRoom(['An', 'Binh', 'Chi']);
+  startRound(state, {
+    spyCount: 1,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  submitDescription(state, { playerId: players[0].id, text: 'Spy hint', now: 2100 });
+  submitDescription(state, { playerId: players[2].id, text: 'Civilian hint', now: 2110 });
+  endDescriptionPhase(state, { now: 3000 });
+  openVote(state, { now: 3100 });
+  submitVote(state, { voterId: players[2].id, targetIds: [players[0].id], now: 3200 });
+
+  const result = endVotePhase(state, { now: 4000 });
+  const inactivePlayer = result.playerResults.find((row) => row.playerId === players[1].id);
+
+  assert.equal(inactivePlayer.missedDescription, true);
+  assert.equal(inactivePlayer.missedVote, true);
+  assert.equal(inactivePlayer.roleScore, 0);
+  assert.equal(inactivePlayer.behaviorPenalty, -10);
+  assert.equal(inactivePlayer.delta, -10);
+});
+
+test('starting a round rejects spy count that leaves no civilians', () => {
+  const { state } = makeRoom(['An', 'Binh']);
+
+  assert.throws(
+    () =>
+      startRound(state, {
+        spyCount: 2,
+        civilianKeyword: 'Tre',
+        spyKeyword: 'Xuan',
+        rng: () => 0,
+        now: 2000,
+      }),
+    /nhỏ hơn số người chơi/
+  );
 });
 
 test('podium sorting uses score, correct guesses, then earlier join order', () => {
@@ -260,4 +398,51 @@ test('kicking a player removes them from players, join order, and spy pool', () 
   assert.equal(state.players[players[1].id], undefined);
   assert.equal(state.joinOrder.includes(players[1].id), false);
   assert.equal(state.spyPool.includes(players[1].id), false);
+});
+
+test('kicking a player clears their round data and removes them from vote targets', () => {
+  const { state, players } = makeRoom(['An', 'Binh', 'Chi']);
+  startRound(state, {
+    spyCount: 1,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  for (const player of players) {
+    submitDescription(state, { playerId: player.id, text: `Hint ${player.name}`, now: 2500 });
+  }
+  endDescriptionPhase(state, { now: 3000 });
+  openVote(state, { now: 3100 });
+  submitVote(state, { voterId: players[0].id, targetIds: [players[1].id], now: 3200 });
+  submitVote(state, { voterId: players[1].id, targetIds: [players[0].id], now: 3201 });
+
+  kickPlayer(state, { playerId: players[1].id });
+
+  assert.equal(state.currentRound.descriptions[players[1].id], undefined);
+  assert.equal(state.currentRound.votes[players[1].id], undefined);
+  assert.deepEqual(state.currentRound.votes[players[0].id].targetIds, []);
+});
+
+test('creating a room replaces any active game state with a fresh game', () => {
+  const { state } = makeRoom(['An', 'Binh', 'Chi']);
+  startRound(state, {
+    spyCount: 1,
+    civilianKeyword: 'Tre',
+    spyKeyword: 'Xuan',
+    rng: () => 0,
+    now: 2000,
+  });
+
+  createRoom(state, { roomCode: 'SPY-9999', now: 5000 });
+
+  assert.equal(state.roomCode, 'SPY-9999');
+  assert.equal(state.phase, 'lobby');
+  assert.equal(state.roundNumber, 0);
+  assert.equal(state.currentRound, null);
+  assert.equal(state.joinOrder.length, 0);
+  assert.deepEqual(state.players, {});
+  assert.deepEqual(state.playerTokens, {});
+  assert.deepEqual(state.spyPool, []);
 });

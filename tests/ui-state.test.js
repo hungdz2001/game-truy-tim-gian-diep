@@ -2,7 +2,9 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
+  formatPoints,
   getAdminPrimaryAction,
+  getGameCreationState,
   getPlayerScreenId,
   getVoteStatus,
 } = require('../public/ui-state');
@@ -52,8 +54,8 @@ test('admin primary action changes with phase and room state', () => {
     action: 'create-room',
     buttonId: null,
     enabled: true,
-    hint: 'Tạo mã phòng để người chơi bắt đầu tham gia.',
-    label: 'Tạo phòng',
+    hint: 'Mở một game nội bộ để người chơi nhập tên và tham gia.',
+    label: 'Tạo game',
     tone: 'primary',
   });
 
@@ -83,4 +85,30 @@ test('admin primary action changes with phase and room state', () => {
     label: 'Tổng kết game',
     tone: 'success',
   });
+});
+
+test('game creation state supports a single active game workflow', () => {
+  assert.deepEqual(getGameCreationState({ roomCode: null, phase: 'setup', playerCount: 0, roundNumber: 0 }), {
+    buttonLabel: 'Tạo game',
+    displayLabel: 'Chưa có game',
+    requiresConfirm: false,
+    tone: 'primary',
+  });
+
+  assert.deepEqual(
+    getGameCreationState({ roomCode: 'SPY-2026', phase: 'description', playerCount: 3, roundNumber: 1 }),
+    {
+      buttonLabel: 'Tạo game mới',
+      displayLabel: 'Game hiện tại',
+      requiresConfirm: true,
+      tone: 'danger',
+    }
+  );
+});
+
+test('point formatting trims integers and keeps one decimal when needed', () => {
+  assert.equal(formatPoints(6.666), '6.7');
+  assert.equal(formatPoints(10), '10');
+  assert.equal(formatPoints(3.333, { signed: true }), '+3.3');
+  assert.equal(formatPoints(-5, { signed: true }), '-5');
 });

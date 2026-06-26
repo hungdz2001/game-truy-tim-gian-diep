@@ -17,8 +17,9 @@
           <span>Truy Tìm Gián Điệp</span>
         </div>
       </div>
+
       <div class="status-strip" aria-label="Trạng thái quản trò">
-        <span class="pill" id="admin-room-pill">ROOM --</span>
+        <span class="pill" id="admin-room-pill">GAME --</span>
         <span class="pill" id="admin-phase-pill">--</span>
         <span class="pill timer" id="admin-timer-pill">--</span>
       </div>
@@ -30,6 +31,7 @@
         <h2>Đăng nhập quản trò</h2>
         <p>Nhập PIN để mở bàn điều phối game.</p>
       </div>
+
       <form class="stack" id="auth-form">
         <div class="input-group">
           <label for="admin-pin">PIN</label>
@@ -39,6 +41,7 @@
           <button type="submit" class="btn-primary">Đăng nhập</button>
         </div>
       </form>
+
       <div class="message" id="auth-message" role="status"></div>
     </section>
 
@@ -46,9 +49,10 @@
       <section class="panel admin-command-panel">
         <div class="command-top">
           <div>
-            <span class="eyebrow">Phòng hiện tại</span>
+            <span class="eyebrow">Game hiện tại</span>
             <div class="room-code" id="room-code-display">--</div>
           </div>
+
           <div class="admin-stats">
             <div class="stat-card">
               <span>Người chơi</span>
@@ -66,23 +70,26 @@
         <div class="primary-action-card" id="admin-action-card">
           <div>
             <span class="eyebrow">Hành động tiếp theo</span>
-            <h2 id="admin-action-title">Tạo phòng</h2>
-            <p id="admin-action-hint">Tạo mã phòng để người chơi bắt đầu tham gia.</p>
+            <h2 id="admin-action-title">Tạo game</h2>
+            <p id="admin-action-hint">Mở một game nội bộ để người chơi nhập tên và tham gia.</p>
           </div>
         </div>
 
         <form class="room-create-form" id="room-form">
-          <div class="input-group">
-            <label for="room-code-input">Mã phòng</label>
-            <input id="room-code-input" placeholder="SPY-2026" autocomplete="off">
-          </div>
-          <button type="submit" class="btn-primary">Tạo phòng</button>
+          <button type="submit" class="btn-primary">Tạo game</button>
         </form>
         <div class="message" id="room-message" role="status"></div>
       </section>
 
+      <nav class="admin-tabs" aria-label="Khu vực điều phối">
+        <button class="admin-tab is-active" type="button" data-admin-tab="control">Điều phối</button>
+        <button class="admin-tab" type="button" data-admin-tab="players">Người chơi</button>
+        <button class="admin-tab" type="button" data-admin-tab="data">Dữ liệu</button>
+        <button class="admin-tab" type="button" data-admin-tab="rank">BXH</button>
+      </nav>
+
       <div class="admin-layout">
-        <section class="panel admin-round-panel">
+        <section class="panel admin-round-panel admin-section is-active" data-admin-section="control">
           <div class="panel-title-row">
             <div>
               <span class="eyebrow">Thiết lập</span>
@@ -90,10 +97,11 @@
             </div>
             <span class="panel-chip" id="admin-progress-chip">0/0</span>
           </div>
+
           <form class="stack" id="round-form">
             <div class="field-row">
               <div class="input-group">
-                <label for="spy-count">Số Gián điệp</label>
+                <label for="spy-count">Số Gián Điệp</label>
                 <input id="spy-count" type="number" min="1" value="1">
               </div>
               <div class="input-group">
@@ -102,7 +110,7 @@
               </div>
             </div>
             <div class="input-group">
-              <label for="spy-keyword">Từ khóa Gián điệp</label>
+              <label for="spy-keyword">Từ khóa Gián Điệp</label>
               <input id="spy-keyword" placeholder="Thanh xuân" autocomplete="off">
             </div>
             <button type="submit" id="start-round-button" class="btn-primary phase-button">Bắt đầu vòng</button>
@@ -122,17 +130,7 @@
           <div class="message" id="round-message" role="status"></div>
         </section>
 
-        <section class="panel">
-          <div class="panel-title-row">
-            <div>
-              <span class="eyebrow">Dữ liệu</span>
-              <h2>Dữ liệu vòng</h2>
-            </div>
-          </div>
-          <div class="description-grid" id="admin-round-data"></div>
-        </section>
-
-        <section class="panel">
+        <section class="panel admin-section" data-admin-section="players">
           <div class="panel-title-row">
             <div>
               <span class="eyebrow">Roster</span>
@@ -142,7 +140,17 @@
           <div class="description-grid" id="admin-player-list"></div>
         </section>
 
-        <section class="panel">
+        <section class="panel admin-section" data-admin-section="data">
+          <div class="panel-title-row">
+            <div>
+              <span class="eyebrow">Dữ liệu</span>
+              <h2>Dữ liệu vòng</h2>
+            </div>
+          </div>
+          <div class="description-grid" id="admin-round-data"></div>
+        </section>
+
+        <section class="panel admin-section" data-admin-section="rank">
           <div class="panel-title-row">
             <div>
               <span class="eyebrow">Điểm</span>

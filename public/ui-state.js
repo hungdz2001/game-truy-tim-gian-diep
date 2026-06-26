@@ -14,8 +14,8 @@
   };
 
   const phaseLabels = {
-    setup: 'Chưa tạo phòng',
-    lobby: 'Phòng chờ',
+    setup: 'Chưa có game',
+    lobby: 'Sảnh chờ',
     description: 'Đang mô tả',
     summary: 'Bảng mô tả',
     voting: 'Đang vote',
@@ -76,6 +76,28 @@
     };
   }
 
+  function getGameCreationState(state = {}) {
+    const hasRoom = Boolean(state.roomCode);
+    const phase = state.phase || 'setup';
+    const playerCount = Number(state.playerCount) || 0;
+    const roundNumber = Number(state.roundNumber) || 0;
+    const hasActiveData =
+      hasRoom && (playerCount > 0 || roundNumber > 0 || !['setup', 'lobby'].includes(phase));
+
+    return {
+      buttonLabel: hasRoom ? 'Tạo game mới' : 'Tạo game',
+      displayLabel: hasRoom ? 'Game hiện tại' : 'Chưa có game',
+      requiresConfirm: Boolean(hasActiveData),
+      tone: hasRoom ? 'danger' : 'primary',
+    };
+  }
+
+  function formatPoints(value, { signed = false } = {}) {
+    const rounded = Math.round(((Number(value) || 0) + Number.EPSILON) * 10) / 10;
+    const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    return signed && rounded > 0 ? `+${text}` : text;
+  }
+
   function getAdminPrimaryAction(state = {}) {
     const phase = state.phase || 'setup';
     const hasRoom = Boolean(state.roomCode);
@@ -87,8 +109,8 @@
         action: 'create-room',
         buttonId: null,
         enabled: true,
-        hint: 'Tạo mã phòng để người chơi bắt đầu tham gia.',
-        label: 'Tạo phòng',
+        hint: 'Mở một game nội bộ để người chơi nhập tên và tham gia.',
+        label: 'Tạo game',
         tone: 'primary',
       };
     }
@@ -175,7 +197,9 @@
   }
 
   return {
+    formatPoints,
     getAdminPrimaryAction,
+    getGameCreationState,
     getPhaseLabel,
     getPhaseSteps,
     getPlayerScreenId,

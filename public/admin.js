@@ -4,6 +4,7 @@ const ui = window.SpyGameUI;
 let adminAuthed = false;
 let adminState = null;
 let timerState = null;
+let activeAdminTab = 'control';
 
 const el = {
   authPanel: document.getElementById('auth-panel'),
@@ -16,7 +17,6 @@ const el = {
   timerPill: document.getElementById('admin-timer-pill'),
   phaseLine: document.getElementById('admin-phase-line'),
   roomForm: document.getElementById('room-form'),
-  roomCodeInput: document.getElementById('room-code-input'),
   roomCodeDisplay: document.getElementById('room-code-display'),
   roomMessage: document.getElementById('room-message'),
   resetButton: document.getElementById('reset-button'),
@@ -48,6 +48,14 @@ const phaseButtons = [
   el.forceVoteButton,
   el.nextRoundButton,
 ];
+const adminTabs = [...document.querySelectorAll('[data-admin-tab]')];
+const adminSections = [...document.querySelectorAll('[data-admin-section]')];
+
+adminTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    setActiveAdminTab(tab.dataset.adminTab);
+  });
+});
 
 el.authForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -65,8 +73,16 @@ el.authForm.addEventListener('submit', async (event) => {
 
 el.roomForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const result = await emitAck('admin:create_room', { roomCode: el.roomCodeInput.value.trim() });
-  setMessage(el.roomMessage, result.ok ? `Đã tạo phòng ${result.roomCode}.` : result.message, result.ok ? 'done' : '');
+  const creation = ui.getGameCreationState(adminState || {});
+  if (
+    creation.requiresConfirm &&
+    !confirm('Tạo game mới sẽ xóa toàn bộ game hiện tại. Tiếp tục?')
+  ) {
+    return;
+  }
+
+  const result = await emitAck('admin:create_room', {});
+  setMessage(el.roomMessage, result.ok ? `${creation.buttonLabel} thành công.` : result.message, result.ok ? 'done' : '');
 });
 
 el.roundForm.addEventListener('submit', async (event) => {
@@ -131,23 +147,33 @@ function render() {
 
   const phase = adminState.phase || 'setup';
   const hasRoom = Boolean(adminState.roomCode);
+  const creation = ui.getGameCreationState(adminState);
   document.querySelector('.admin-shell')?.setAttribute('data-phase', phase);
 
-  el.roomPill.textContent = `ROOM ${adminState.roomCode || '--'}`;
+  el.roomPill.textContent = hasRoom ? 'GAME ĐANG MỞ' : 'CHƯA CÓ GAME';
   el.phasePill.textContent = ui.getPhaseLabel(phase);
-  el.roomCodeDisplay.textContent = adminState.roomCode || '--';
+  el.roomCodeDisplay.textContent = creation.displayLabel;
   el.playerCount.textContent = adminState.playerCount || 0;
   el.spyPool.textContent = adminState.spyPoolRemaining || 0;
   el.progressChip.textContent = progressText(phase);
-  el.roomForm.classList.toggle('is-hidden', hasRoom && phase !== 'setup');
+  renderGameCreateButton(creation);
 
   renderTimer();
   renderPhaseLine(phase);
   renderAdminAction();
   renderButtons(phase);
+  renderAdminTabs();
   renderPlayers();
   renderRoundData();
   renderLeaderboard();
+}
+
+function renderGameCreateButton(creation) {
+  const button = el.roomForm.querySelector('button');
+  if (!button) return;
+  button.textContent = creation.buttonLabel;
+  button.classList.toggle('btn-primary', creation.tone !== 'danger');
+  button.classList.toggle('danger', creation.tone === 'danger');
 }
 
 function renderAdminAction() {
@@ -181,6 +207,26 @@ function renderButtons(phase) {
   el.endGameButton.classList.toggle('is-current-action', action.buttonId === 'end-game-button');
 }
 
+function setActiveAdminTab(tabName) {
+  activeAdminTab = tabName || 'control';
+  renderAdminTabs();
+}
+
+function renderAdminTabs() {
+  const validTabs = new Set(adminTabs.map((tab) => tab.dataset.adminTab));
+  if (!validTabs.has(activeAdminTab)) activeAdminTab = 'control';
+
+  adminTabs.forEach((tab) => {
+    const isActive = tab.dataset.adminTab === activeAdminTab;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+  });
+
+  adminSections.forEach((section) => {
+    section.classList.toggle('is-active', section.dataset.adminSection === activeAdminTab);
+  });
+}
+
 function renderPhaseLine(phase) {
   el.phaseLine.innerHTML = ui
     .getPhaseSteps(phase)
@@ -205,7 +251,7 @@ function renderPlayers() {
             <strong>${escapeHtml(player.name)}</strong>
             <span class="muted">${roleLabel(player.role)} · ${player.connected ? 'online' : 'offline'}</span>
           </span>
-          <span>${player.score} điểm</span>
+          <span>${ui.formatPoints(player.score)} điểm</span>
           <button class="danger" type="button" data-kick="${player.id}">Xóa</button>
         </div>
       `
@@ -262,7 +308,7 @@ function renderRoundData() {
         <div class="result-row">
           <strong>${row.role === 'SPY' ? 'SPY' : 'DÂN'}</strong>
           <span>${escapeHtml(row.name)}</span>
-          <span class="${row.delta >= 0 ? 'delta-plus' : 'delta-minus'}">${formatDelta(row.delta)}</span>
+          <span class="${row.delta >= 0 ? 'delta-plus' : 'delta-minus'}">${ui.formatPoints(row.delta, { signed: true })}</span>
         </div>
       `);
     }
@@ -284,7 +330,7 @@ function renderLeaderboard() {
         <div class="rank-row">
           <strong>#${index + 1}</strong>
           <span>${escapeHtml(row.name)} <span class="muted">${row.correctGuesses} đúng</span></span>
-          <span>${row.score} điểm</span>
+          <span>${ui.formatPoints(row.score)} điểm</span>
         </div>
       `
     )
@@ -326,10 +372,6 @@ function roleLabel(role) {
     CIVILIAN: 'Dân thường',
     WAITING: 'Chờ vòng',
   }[role] || role;
-}
-
-function formatDelta(value) {
-  return value > 0 ? `+${value}` : String(value);
 }
 
 function escapeHtml(value) {

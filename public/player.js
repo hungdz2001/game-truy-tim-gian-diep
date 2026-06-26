@@ -128,6 +128,15 @@ socket.on('error:message', (payload) => {
   setMessage(el.voteMessage, payload.message || '');
 });
 
+socket.on('player:kicked', (payload = {}) => {
+  playerState = null;
+  timerState = null;
+  lastDescriptionRoundNumber = null;
+  localStorage.removeItem(TOKEN_KEY);
+  setMessage(el.lobbyMessage, payload.message || 'Bạn đã bị quản trò xóa khỏi game.');
+  render();
+});
+
 socket.on('round:description_summary', () => render());
 socket.on('round:vote_opened', () => render());
 socket.on('round:result', () => render());
@@ -171,7 +180,7 @@ async function attemptAutoJoin() {
 function renderHeader() {
   const score = playerState?.player?.score || 0;
   el.roomPill.textContent = roomState?.roomCode ? 'PHÒNG NỘI BỘ' : 'CHƯA MỞ';
-  el.scorePill.textContent = `${score} điểm`;
+  el.scorePill.textContent = `${ui.formatPoints(score)} điểm`;
   renderTimer();
 }
 
@@ -187,8 +196,8 @@ function renderTimer() {
 function renderWaiting() {
   el.waitingMessage.textContent =
     roomState?.phase === 'setup' || !roomState?.roomCode
-      ? 'Chưa có phòng đang mở.'
-      : 'Đã vào phòng. Chờ quản trò bắt đầu vòng.';
+      ? 'Chưa có game đang mở.'
+      : 'Đã vào game. Chờ quản trò bắt đầu vòng.';
   el.waitingRoster.innerHTML = renderRosterRows(roomState?.players || []);
 }
 
@@ -275,14 +284,21 @@ function renderResult() {
   const result = playerState.round?.result || roomState?.currentRound?.result;
   if (!result) return;
 
+  const myId = playerState?.player?.id;
+  const orderedResults = [...result.playerResults].sort((a, b) => {
+    if (a.playerId === myId) return -1;
+    if (b.playerId === myId) return 1;
+    return 0;
+  });
+
   el.spyReveal.textContent = `Gián điệp thật sự: ${result.spyNames.join(', ')}`;
-  el.roundResult.innerHTML = result.playerResults
+  el.roundResult.innerHTML = orderedResults
     .map(
       (row) => `
-        <div class="result-row">
-          <strong>${row.role === 'SPY' ? 'SPY' : 'DÂN'}</strong>
+        <div class="result-row ${row.playerId === myId ? 'my-result' : ''}">
+          <strong>${row.playerId === myId ? 'Bạn' : row.role === 'SPY' ? 'SPY' : 'DÂN'}</strong>
           <span>${escapeHtml(row.name)} <span class="muted">${escapeHtml(row.description)}</span></span>
-          <span class="${row.delta >= 0 ? 'delta-plus' : 'delta-minus'}">${formatDelta(row.delta)}</span>
+          <span class="${row.delta >= 0 ? 'delta-plus' : 'delta-minus'}">${ui.formatPoints(row.delta, { signed: true })}</span>
         </div>
       `
     )
@@ -302,7 +318,7 @@ function renderPodium() {
         <div class="podium-step ${rank === 1 ? 'first' : ''}">
           <strong>Hạng ${rank}</strong>
           <span>${escapeHtml(row.name)}</span>
-          <span class="delta-plus">${row.score} điểm</span>
+          <span class="delta-plus">${ui.formatPoints(row.score)} điểm</span>
         </div>
       `;
     })
@@ -331,7 +347,7 @@ function renderRosterRows(rows) {
         <div class="description-row">
           <strong>${escapeHtml(player.name)}</strong>
           <span class="muted">${player.connected ? 'online' : 'offline'}</span>
-          <span>${player.score} điểm</span>
+          <span>${ui.formatPoints(player.score)} điểm</span>
         </div>
       `
     )
@@ -363,7 +379,7 @@ function renderRankRows(rows = [], startRank = 1) {
         <div class="rank-row">
           <strong>#${startRank + index}</strong>
           <span>${escapeHtml(row.name)} <span class="muted">${row.correctGuesses} đoán đúng</span></span>
-          <span>${row.score} điểm</span>
+          <span>${ui.formatPoints(row.score)} điểm</span>
         </div>
       `
     )
@@ -391,10 +407,6 @@ function emitAck(event, payload) {
 
 function createToken() {
   return `player-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function formatDelta(value) {
-  return value > 0 ? `+${value}` : String(value);
 }
 
 function escapeHtml(value) {

@@ -1,4 +1,4 @@
-/* Player-only polish layered over the shared mobile-first design system. */
+/* Player-only motion and spacing layered over the shared mobile-first system. */
 
 .player-shell {
   overflow: hidden;
@@ -15,7 +15,7 @@
   overscroll-behavior: contain;
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .player-shell .screen.active {
@@ -24,7 +24,12 @@
 }
 
 .player-shell .panel-content {
-  min-height: calc(100svh - 118px);
+  min-height: calc(100svh - 122px);
+}
+
+.player-shell .mission-entry {
+  min-height: calc(100svh - 96px);
+  justify-content: flex-start;
 }
 
 .player-shell .description-form,
@@ -37,17 +42,30 @@
 }
 
 .player-shell .topbar {
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 26px rgba(26, 33, 41, 0.18);
 }
 
-.player-shell .hero-content {
-  gap: var(--space-4);
+.player-shell .screen-head {
+  animation: stage-in 0.22s ease both;
+}
+
+@keyframes stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .player-shell .screen,
+  .player-shell .screen-head,
   .keyword,
   button {
+    animation: none;
     transition: none;
   }
 }

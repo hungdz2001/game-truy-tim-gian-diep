@@ -47,7 +47,7 @@ function joinPlayer(state, { roomCode, name, token, now = Date.now() }) {
   }
 
   if (state.lobbyLocked) {
-    throw new Error('Phòng đã khóa, người chơi mới không thể tham gia.');
+    throw new Error('Game đã khóa, người chơi mới không thể tham gia.');
   }
 
   const id = `p${state.nextPlayerNumber++}`;
@@ -81,6 +81,9 @@ function kickPlayer(state, { playerId }) {
   if (state.currentRound) {
     delete state.currentRound.descriptions[playerId];
     delete state.currentRound.votes[playerId];
+    for (const vote of Object.values(state.currentRound.votes)) {
+      vote.targetIds = vote.targetIds.filter((targetId) => targetId !== playerId);
+    }
   }
 
   return true;
@@ -113,6 +116,9 @@ function startRound(
   }
   if (cleanSpyCount > state.spyPool.length) {
     throw new Error(`Số Gián điệp không được lớn hơn pool còn lại (${state.spyPool.length}).`);
+  }
+  if (cleanSpyCount >= activePlayerIds(state).length) {
+    throw new Error('Số Gián điệp phải nhỏ hơn số người chơi.');
   }
 
   const cleanCivilianKeyword = normalizeKeyword(civilianKeyword, 'Từ khóa Dân thường');
@@ -220,11 +226,15 @@ function submitVote(state, { voterId, targetIds, now = Date.now() }) {
 function endVotePhase(state, { now = Date.now() } = {}) {
   const round = assertCurrentRound(state, 'voting');
   const spySet = new Set(round.spyIds);
-  const voteCounts = {};
+  const civilianIds = activePlayerIds(state).filter((playerId) => !spySet.has(playerId));
+  const civilianCount = civilianIds.length || 1;
+  const civilianVoteCounts = {};
 
-  for (const vote of Object.values(round.votes)) {
+  for (const civilianId of civilianIds) {
+    const vote = round.votes[civilianId];
+    if (!vote) continue;
     for (const targetId of vote.targetIds) {
-      voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
+      civilianVoteCounts[targetId] = (civilianVoteCounts[targetId] || 0) + 1;
     }
   }
 
@@ -234,17 +244,20 @@ function endVotePhase(state, { now = Date.now() } = {}) {
     const description = round.descriptions[playerId];
     const vote = round.votes[playerId];
     const missedDescription = Boolean(description && description.auto);
+    const missedVote = !vote;
     const correctTargets =
       role === 'CIVILIAN' && vote
         ? vote.targetIds.filter((targetId) => spySet.has(targetId))
         : [];
     const correctGuessCount = correctTargets.length;
-    const votesAgainst = voteCounts[playerId] || 0;
+    const votesAgainst = civilianVoteCounts[playerId] || 0;
 
-    let delta = 0;
-    if (missedDescription) delta -= 5;
-    if (role === 'CIVILIAN') delta += correctGuessCount * 10;
-    if (role === 'SPY') delta -= votesAgainst * 5;
+    const roleScore =
+      role === 'CIVILIAN'
+        ? roundScore(10 * (correctGuessCount / round.spyCount))
+        : roundScore(10 * (1 - votesAgainst / civilianCount));
+    const behaviorPenalty = (missedDescription ? -5 : 0) + (missedVote ? -5 : 0);
+    const delta = roundScore(roleScore + behaviorPenalty);
 
     player.score += delta;
     player.correctGuesses += correctGuessCount;
@@ -255,9 +268,12 @@ function endVotePhase(state, { now = Date.now() } = {}) {
       role,
       description: description ? description.text : DEFAULT_DESCRIPTION,
       missedDescription,
+      missedVote,
       votedTargetIds: vote ? vote.targetIds : [],
       correctGuessCount,
       votesAgainst,
+      roleScore,
+      behaviorPenalty,
       delta,
       score: player.score,
       correctGuesses: player.correctGuesses,
@@ -452,6 +468,10 @@ function drawSpies(spyPool, spyCount, rng) {
   return spies;
 }
 
+function roundScore(value) {
+  return Math.round((value + Number.EPSILON) * 10) / 10;
+}
+
 function getDescriptionRowsIfAvailable(state) {
   if (!state.currentRound) return [];
   if (!['summary', 'voting', 'result'].includes(state.phase)) return [];
@@ -498,7 +518,7 @@ function normalizeKeyword(keyword, label) {
 
 function assertRoom(state) {
   if (!state || !state.roomCode) {
-    throw new Error('Chưa tạo phòng chơi.');
+    throw new Error('Chưa có game đang mở.');
   }
 }
 

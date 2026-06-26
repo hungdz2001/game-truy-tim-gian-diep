@@ -61,6 +61,7 @@ io.on('connection', (socket) => {
   socket.on('admin:create_room', (data = {}, reply) => {
     handleAdminAction(socket, reply, () => {
       clearActiveTimer();
+      clearPlayerSockets('Game mới đã được tạo. Nhập tên để tham gia lại.');
       createRoom(state, {
         roomCode: data.roomCode || generateRoomCode(),
         now: Date.now(),
@@ -72,9 +73,14 @@ io.on('connection', (socket) => {
 
   socket.on('admin:kick_player', (data = {}, reply) => {
     handleAdminAction(socket, reply, () => {
-      kickPlayer(state, { playerId: data.playerId });
+      const playerId = String(data.playerId || '');
+      const kicked = kickPlayer(state, { playerId });
+      if (!kicked) {
+        throw new Error('Người chơi không tồn tại.');
+      }
+      clearPlayerSocket(playerId, 'Bạn đã bị quản trò xóa khỏi game.');
       persistAndBroadcast();
-      return { ok: true };
+      return { ok: true, kicked: true };
     });
   });
 
@@ -137,6 +143,7 @@ io.on('connection', (socket) => {
   socket.on('admin:reset_game', (_data = {}, reply) => {
     handleAdminAction(socket, reply, () => {
       clearActiveTimer();
+      clearPlayerSockets('Game đã được reset. Nhập tên để tham gia lại.');
       state = createInitialState();
       persistAndBroadcast();
       return { ok: true };
@@ -249,6 +256,24 @@ function broadcastState() {
   }
 }
 
+function clearPlayerSocket(playerId, message) {
+  for (const client of io.sockets.sockets.values()) {
+    if (client.data.playerId !== playerId) continue;
+    client.data.playerId = null;
+    client.data.playerToken = null;
+    client.emit('player:kicked', { message });
+  }
+}
+
+function clearPlayerSockets(message) {
+  for (const client of io.sockets.sockets.values()) {
+    if (!client.data.playerId) continue;
+    client.data.playerId = null;
+    client.data.playerToken = null;
+    client.emit('player:kicked', { message });
+  }
+}
+
 function persistAndBroadcast() {
   persistState();
   broadcastState();
@@ -296,7 +321,7 @@ function handleAdminAction(socket, reply, action) {
 function handlePlayerAction(socket, reply, action) {
   handleSocketAction(socket, reply, () => {
     if (!socket.data.playerId || !state.players[socket.data.playerId]) {
-      throw new Error('Bạn cần tham gia phòng trước.');
+      throw new Error('Bạn cần tham gia game trước.');
     }
     return action();
   });
