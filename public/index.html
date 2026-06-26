@@ -2,102 +2,160 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Truy Tìm Gián Điệp</title>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/mobile.css">
 </head>
 <body>
   <main class="app-shell player-shell">
-    <header class="topbar">
+    <header class="topbar app-topbar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"></div>
-        <div>
+        <div class="brand-text">
           <h1>Truy Tìm Gián Điệp</h1>
           <span>Phòng điều tra nội bộ</span>
         </div>
       </div>
-      <div class="status-strip">
+      <div class="status-strip" aria-label="Trạng thái người chơi">
         <span class="pill" id="room-pill">ROOM --</span>
         <span class="pill" id="score-pill">0 điểm</span>
         <span class="pill timer" id="timer-pill">--</span>
       </div>
+      <div class="phase-line compact" id="phase-line" aria-label="Tiến trình vòng"></div>
     </header>
 
-    <section class="panel screen active" id="screen-lobby">
-      <h2>Tham gia phòng</h2>
-      <form class="stack" id="join-form">
-        <div>
-          <label for="room-code">Mã phòng</label>
-          <input id="room-code" autocomplete="off" placeholder="SPY-2026">
+    <div class="screen-container">
+      <section class="panel screen active" id="screen-lobby">
+        <div class="panel-content hero-content">
+          <div class="screen-head">
+            <span class="eyebrow">Player</span>
+            <h2>Vào phòng chơi</h2>
+            <p>Nhập mã phòng và tên hiển thị để tham gia lượt điều tra.</p>
+          </div>
+          <form class="stack join-card" id="join-form">
+            <div class="input-group">
+              <label for="room-code">Mã phòng</label>
+              <input id="room-code" autocomplete="off" inputmode="text" placeholder="SPY-2026">
+            </div>
+            <div class="input-group">
+              <label for="player-name">Tên hiển thị</label>
+              <input id="player-name" autocomplete="name" placeholder="Nguyễn Văn A">
+            </div>
+            <div class="action-dock">
+              <button type="submit" class="btn-primary">Tham gia</button>
+            </div>
+          </form>
+          <div class="message text-center" id="lobby-message" role="status"></div>
         </div>
-        <div>
-          <label for="player-name">Tên hiển thị</label>
-          <input id="player-name" autocomplete="name" placeholder="Nguyễn Văn A">
+      </section>
+
+      <section class="panel screen" id="screen-waiting">
+        <div class="panel-content">
+          <div class="screen-head">
+            <span class="eyebrow">Chờ lượt</span>
+            <h2>Phòng chờ</h2>
+            <p>Giữ màn hình này mở. Quản trò sẽ bắt đầu vòng khi đủ người.</p>
+          </div>
+          <div class="message text-center" id="waiting-message" role="status"></div>
+          <div class="list-section">
+            <div class="section-title">Người chơi</div>
+            <div class="description-grid roster-list" id="waiting-roster"></div>
+          </div>
         </div>
-        <button type="submit">Tham gia</button>
-      </form>
-      <div class="message" id="lobby-message"></div>
-    </section>
+      </section>
 
-    <section class="panel screen" id="screen-waiting">
-      <h2>Phòng chờ</h2>
-      <div class="phase-line" id="phase-line"></div>
-      <div class="message" id="waiting-message"></div>
-      <div class="description-grid" id="waiting-roster"></div>
-    </section>
-
-    <section class="panel screen" id="screen-description">
-      <h2>Vòng mô tả</h2>
-      <div class="secret-card" id="secret-card">
-        <div>
-          <div class="role-badge" id="role-badge">--</div>
-          <div class="muted">Nhấn giữ để xem từ khóa</div>
-          <div class="keyword" id="secret-keyword">--</div>
+      <section class="panel screen" id="screen-description">
+        <div class="panel-content">
+          <div class="screen-head">
+            <span class="eyebrow">Vòng mô tả</span>
+            <h2>Gợi ý thật kín</h2>
+            <p>Xem từ khóa riêng của bạn, rồi gửi mô tả ngắn để cả nhóm suy luận.</p>
+          </div>
+          <div class="secret-card-container">
+            <div class="secret-card" id="secret-card" aria-label="Nhấn giữ để xem từ khóa">
+              <div class="card-inner">
+                <div class="role-badge" id="role-badge">--</div>
+                <div class="muted instruction-text">Nhấn giữ để xem từ khóa</div>
+                <div class="keyword" id="secret-keyword">--</div>
+              </div>
+            </div>
+          </div>
+          <form class="stack description-form" id="description-form">
+            <div class="input-group">
+              <label for="description-input">Mô tả 1-2 từ</label>
+              <input id="description-input" maxlength="40" autocomplete="off" placeholder="Ví dụ: Sức sống">
+            </div>
+            <div class="action-dock">
+              <button type="submit" class="btn-primary">Nộp mô tả</button>
+            </div>
+          </form>
+          <div class="message text-center" id="description-message" role="status"></div>
         </div>
-      </div>
-      <form class="stack" id="description-form" style="margin-top:14px;">
-        <div>
-          <label for="description-input">Mô tả 1-2 từ</label>
-          <input id="description-input" maxlength="40" autocomplete="off" placeholder="Ví dụ: Sức sống">
+      </section>
+
+      <section class="panel screen" id="screen-summary">
+        <div class="panel-content">
+          <div class="screen-head">
+            <span class="eyebrow">Bảng mô tả</span>
+            <h2>Đọc dấu vết</h2>
+            <p>So sánh mô tả của mọi người trước khi quản trò mở vote.</p>
+          </div>
+          <div class="description-grid" id="description-summary"></div>
+          <div class="message text-center">Chờ quản trò mở cổng bình chọn.</div>
         </div>
-        <button type="submit">Nộp mô tả</button>
-      </form>
-      <div class="message" id="description-message"></div>
-    </section>
+      </section>
 
-    <section class="panel screen" id="screen-summary">
-      <h2>Bảng mô tả</h2>
-      <div class="description-grid" id="description-summary"></div>
-      <div class="message">Chờ quản trò mở cổng bình chọn.</div>
-    </section>
+      <section class="panel screen" id="screen-vote">
+        <div class="panel-content">
+          <div class="screen-head">
+            <span class="eyebrow">Bình chọn</span>
+            <h2>Chọn nghi phạm</h2>
+            <p>Chọn đúng số người bị nghi là Gián điệp, rồi xác nhận.</p>
+          </div>
+          <div class="selection-meter" id="vote-meter">Đã chọn 0/0</div>
+          <form class="stack vote-form" id="vote-form">
+            <div class="vote-grid" id="vote-grid"></div>
+            <div class="action-dock">
+              <button type="submit" id="vote-submit" class="btn-danger">Xác nhận bình chọn</button>
+            </div>
+          </form>
+          <div class="message text-center" id="vote-message" role="status"></div>
+        </div>
+      </section>
 
-    <section class="panel screen" id="screen-vote">
-      <h2>Bình chọn nghi phạm</h2>
-      <form class="stack" id="vote-form">
-        <div class="vote-grid" id="vote-grid"></div>
-        <button type="submit" id="vote-submit">Xác nhận bình chọn</button>
-      </form>
-      <div class="message" id="vote-message"></div>
-    </section>
+      <section class="panel screen" id="screen-result">
+        <div class="panel-content">
+          <div class="screen-head">
+            <span class="eyebrow">Kết quả vòng</span>
+            <h2>Lộ diện</h2>
+            <p>Xem Gián điệp, điểm thay đổi, rồi chờ quản trò chuyển vòng.</p>
+          </div>
+          <div class="message spy-reveal-text" id="spy-reveal"></div>
+          <div class="description-grid" id="round-result"></div>
+          <div class="leaderboard-section">
+            <div class="section-title">Bảng điểm</div>
+            <div class="description-grid" id="leaderboard"></div>
+          </div>
+        </div>
+      </section>
 
-    <section class="panel screen" id="screen-result">
-      <h2>Kết quả vòng</h2>
-      <div class="message" id="spy-reveal"></div>
-      <div class="description-grid" id="round-result"></div>
-      <div style="margin-top:14px;">
-        <h2>Bảng điểm</h2>
-        <div class="description-grid" id="leaderboard"></div>
-      </div>
-    </section>
-
-    <section class="panel screen" id="screen-podium">
-      <h2>Bục vinh danh</h2>
-      <div class="podium" id="podium"></div>
-      <div class="description-grid" id="final-ranks"></div>
-    </section>
+      <section class="panel screen" id="screen-podium">
+        <div class="panel-content podium-content">
+          <div class="screen-head">
+            <span class="eyebrow">Tổng kết</span>
+            <h2>Bục vinh danh</h2>
+            <p>Thứ hạng cuối cùng sau toàn bộ lượt chơi.</p>
+          </div>
+          <div class="podium" id="podium"></div>
+          <div class="description-grid" id="final-ranks"></div>
+        </div>
+      </section>
+    </div>
   </main>
 
+  <script src="/ui-state.js"></script>
   <script src="/player.js"></script>
 </body>
 </html>

@@ -2,115 +2,160 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Quản Trò - Truy Tìm Gián Điệp</title>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main class="app-shell">
-    <header class="topbar">
+  <main class="app-shell admin-shell">
+    <header class="topbar app-topbar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"></div>
-        <div>
+        <div class="brand-text">
           <h1>Bàn Điều Phối</h1>
           <span>Truy Tìm Gián Điệp</span>
         </div>
       </div>
-      <div class="status-strip">
+      <div class="status-strip" aria-label="Trạng thái quản trò">
         <span class="pill" id="admin-room-pill">ROOM --</span>
         <span class="pill" id="admin-phase-pill">--</span>
         <span class="pill timer" id="admin-timer-pill">--</span>
       </div>
     </header>
 
-    <section class="panel" id="auth-panel">
-      <h2>Đăng nhập quản trò</h2>
-      <form class="field-row" id="auth-form">
-        <div>
+    <section class="panel auth-panel" id="auth-panel">
+      <div class="screen-head">
+        <span class="eyebrow">Admin</span>
+        <h2>Đăng nhập quản trò</h2>
+        <p>Nhập PIN để mở bàn điều phối game.</p>
+      </div>
+      <form class="stack" id="auth-form">
+        <div class="input-group">
           <label for="admin-pin">PIN</label>
           <input id="admin-pin" type="password" value="2468" autocomplete="current-password">
         </div>
-        <div style="align-self:end;">
-          <button type="submit">Đăng nhập</button>
+        <div class="action-dock inline">
+          <button type="submit" class="btn-primary">Đăng nhập</button>
         </div>
       </form>
-      <div class="message" id="auth-message"></div>
+      <div class="message" id="auth-message" role="status"></div>
     </section>
 
-    <section id="admin-app" style="display:none;">
-      <div class="layout">
-        <div>
-          <section class="panel">
-            <h2>Phòng chơi</h2>
+    <section id="admin-app" class="admin-app" hidden>
+      <section class="panel admin-command-panel">
+        <div class="command-top">
+          <div>
+            <span class="eyebrow">Phòng hiện tại</span>
             <div class="room-code" id="room-code-display">--</div>
-            <form class="field-row" id="room-form" style="margin-top:12px;">
-              <div>
-                <label for="room-code-input">Mã phòng</label>
-                <input id="room-code-input" placeholder="SPY-2026">
-              </div>
-              <div style="align-self:end;">
-                <button type="submit">Tạo phòng</button>
-              </div>
-            </form>
-            <div class="action-row">
-              <button class="danger" id="reset-button" type="button">Reset game</button>
-              <button class="success" id="end-game-button" type="button">Tổng kết game</button>
+          </div>
+          <div class="admin-stats">
+            <div class="stat-card">
+              <span>Người chơi</span>
+              <strong id="admin-player-count">0</strong>
             </div>
-            <div class="message" id="room-message"></div>
-          </section>
-
-          <section class="panel">
-            <h2>Bắt đầu vòng</h2>
-            <form class="stack" id="round-form">
-              <div class="field-row">
-                <div>
-                  <label for="spy-count">Số Gián điệp</label>
-                  <input id="spy-count" type="number" min="1" value="1">
-                </div>
-                <div>
-                  <label for="civilian-keyword">Từ khóa Dân thường</label>
-                  <input id="civilian-keyword" placeholder="Tuổi trẻ">
-                </div>
-              </div>
-              <div>
-                <label for="spy-keyword">Từ khóa Gián điệp</label>
-                <input id="spy-keyword" placeholder="Thanh xuân">
-              </div>
-              <button type="submit" id="start-round-button">Bắt đầu vòng</button>
-            </form>
-            <div class="action-row">
-              <button id="force-description-button" class="warning" type="button">Khóa mô tả</button>
-              <button id="open-vote-button" type="button">Mở vote</button>
+            <div class="stat-card">
+              <span>Pool spy</span>
+              <strong id="admin-spy-pool">0</strong>
             </div>
-            <div class="action-row">
-              <button id="force-vote-button" class="warning" type="button">Khóa vote</button>
-              <button id="next-round-button" type="button">Sang vòng mới</button>
-            </div>
-            <div class="message" id="round-message"></div>
-          </section>
-
-          <section class="panel">
-            <h2>Dữ liệu vòng</h2>
-            <div class="description-grid" id="admin-round-data"></div>
-          </section>
+          </div>
         </div>
 
-        <aside>
-          <section class="panel">
-            <h2>Người chơi</h2>
-            <div class="description-grid" id="admin-player-list"></div>
-          </section>
+        <div class="phase-line admin-phase-line" id="admin-phase-line" aria-label="Tiến trình điều phối"></div>
 
-          <section class="panel">
-            <h2>Bảng xếp hạng</h2>
-            <div class="description-grid" id="admin-leaderboard"></div>
-          </section>
-        </aside>
+        <div class="primary-action-card" id="admin-action-card">
+          <div>
+            <span class="eyebrow">Hành động tiếp theo</span>
+            <h2 id="admin-action-title">Tạo phòng</h2>
+            <p id="admin-action-hint">Tạo mã phòng để người chơi bắt đầu tham gia.</p>
+          </div>
+        </div>
+
+        <form class="room-create-form" id="room-form">
+          <div class="input-group">
+            <label for="room-code-input">Mã phòng</label>
+            <input id="room-code-input" placeholder="SPY-2026" autocomplete="off">
+          </div>
+          <button type="submit" class="btn-primary">Tạo phòng</button>
+        </form>
+        <div class="message" id="room-message" role="status"></div>
+      </section>
+
+      <div class="admin-layout">
+        <section class="panel admin-round-panel">
+          <div class="panel-title-row">
+            <div>
+              <span class="eyebrow">Thiết lập</span>
+              <h2>Bắt đầu vòng</h2>
+            </div>
+            <span class="panel-chip" id="admin-progress-chip">0/0</span>
+          </div>
+          <form class="stack" id="round-form">
+            <div class="field-row">
+              <div class="input-group">
+                <label for="spy-count">Số Gián điệp</label>
+                <input id="spy-count" type="number" min="1" value="1">
+              </div>
+              <div class="input-group">
+                <label for="civilian-keyword">Từ khóa Dân thường</label>
+                <input id="civilian-keyword" placeholder="Tuổi trẻ" autocomplete="off">
+              </div>
+            </div>
+            <div class="input-group">
+              <label for="spy-keyword">Từ khóa Gián điệp</label>
+              <input id="spy-keyword" placeholder="Thanh xuân" autocomplete="off">
+            </div>
+            <button type="submit" id="start-round-button" class="btn-primary phase-button">Bắt đầu vòng</button>
+          </form>
+
+          <div class="phase-button-grid">
+            <button id="force-description-button" class="warning phase-button" type="button">Khóa mô tả</button>
+            <button id="open-vote-button" class="btn-primary phase-button" type="button">Mở vote</button>
+            <button id="force-vote-button" class="warning phase-button" type="button">Khóa vote</button>
+            <button id="next-round-button" class="btn-primary phase-button" type="button">Sang vòng mới</button>
+          </div>
+
+          <div class="secondary-actions">
+            <button class="success" id="end-game-button" type="button">Tổng kết game</button>
+            <button class="danger" id="reset-button" type="button">Reset game</button>
+          </div>
+          <div class="message" id="round-message" role="status"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <div>
+              <span class="eyebrow">Dữ liệu</span>
+              <h2>Dữ liệu vòng</h2>
+            </div>
+          </div>
+          <div class="description-grid" id="admin-round-data"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <div>
+              <span class="eyebrow">Roster</span>
+              <h2>Người chơi</h2>
+            </div>
+          </div>
+          <div class="description-grid" id="admin-player-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <div>
+              <span class="eyebrow">Điểm</span>
+              <h2>Bảng xếp hạng</h2>
+            </div>
+          </div>
+          <div class="description-grid" id="admin-leaderboard"></div>
+        </section>
       </div>
     </section>
   </main>
 
+  <script src="/ui-state.js"></script>
   <script src="/admin.js"></script>
 </body>
 </html>

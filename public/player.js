@@ -1,4 +1,5 @@
 const socket = io();
+const ui = window.SpyGameUI;
 
 const TOKEN_KEY = 'spyGamePlayerToken';
 const NAME_KEY = 'spyGamePlayerName';
@@ -7,6 +8,7 @@ const ROOM_KEY = 'spyGameRoomCode';
 let roomState = null;
 let playerState = null;
 let timerState = null;
+let lastDescriptionRoundNumber = null;
 
 const el = {
   roomPill: document.getElementById('room-pill'),
@@ -27,6 +29,7 @@ const el = {
   descriptionSummary: document.getElementById('description-summary'),
   voteForm: document.getElementById('vote-form'),
   voteGrid: document.getElementById('vote-grid'),
+  voteMeter: document.getElementById('vote-meter'),
   voteMessage: document.getElementById('vote-message'),
   voteSubmit: document.getElementById('vote-submit'),
   spyReveal: document.getElementById('spy-reveal'),
@@ -79,12 +82,16 @@ el.descriptionForm.addEventListener('submit', async (event) => {
   el.descriptionForm.querySelector('button').disabled = true;
 });
 
+el.voteGrid.addEventListener('change', () => {
+  refreshVoteStatus();
+});
+
 el.voteForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const checked = [...document.querySelectorAll('.vote-checkbox:checked')].map((box) => box.value);
-  const expected = playerState?.round?.spyCount || 0;
-  if (checked.length !== expected) {
-    setMessage(el.voteMessage, `Bạn phải chọn đúng ${expected} người.`);
+  const checked = getCheckedVoteIds();
+  const status = getCurrentVoteStatus();
+  if (!status.canSubmit) {
+    setMessage(el.voteMessage, status.message, status.tone);
     return;
   }
 
@@ -93,11 +100,12 @@ el.voteForm.addEventListener('submit', async (event) => {
     setMessage(el.voteMessage, result.message);
     return;
   }
-  setMessage(el.voteMessage, 'Đã gửi bình chọn.');
+  setMessage(el.voteMessage, 'Đã gửi bình chọn.', 'done');
   [...document.querySelectorAll('.vote-checkbox')].forEach((box) => {
     box.disabled = true;
   });
   el.voteSubmit.disabled = true;
+  el.voteMeter.textContent = 'Đã gửi';
 });
 
 socket.on('room:state', (payload) => {
@@ -132,31 +140,23 @@ socket.on('game:podium', () => render());
 
 function render() {
   renderHeader();
+  renderPhaseLine();
 
-  if (!playerState?.player) {
-    showScreen('screen-lobby');
-    renderPhaseLine();
-    return;
-  }
+  const screenId = ui.getPlayerScreenId(playerState);
+  showScreen(screenId);
 
-  const phase = playerState.phase;
-  if (phase === 'description') {
-    showScreen('screen-description');
+  if (screenId === 'screen-lobby') return;
+  if (screenId === 'screen-description') {
     renderDescriptionScreen();
-  } else if (phase === 'summary') {
-    showScreen('screen-summary');
+  } else if (screenId === 'screen-summary') {
     renderSummary();
-  } else if (phase === 'voting') {
-    showScreen('screen-vote');
+  } else if (screenId === 'screen-vote') {
     renderVote();
-  } else if (phase === 'result') {
-    showScreen('screen-result');
+  } else if (screenId === 'screen-result') {
     renderResult();
-  } else if (phase === 'gameOver') {
-    showScreen('screen-podium');
+  } else if (screenId === 'screen-podium') {
     renderPodium();
   } else {
-    showScreen('screen-waiting');
     renderWaiting();
   }
 }
@@ -192,58 +192,90 @@ function renderTimer() {
 }
 
 function renderWaiting() {
-  renderPhaseLine();
   el.waitingMessage.textContent =
     roomState?.phase === 'setup' || !roomState?.roomCode
       ? 'Chưa có phòng đang mở.'
       : 'Đã vào phòng. Chờ quản trò bắt đầu vòng.';
-  el.waitingRoster.innerHTML = (roomState?.players || [])
-    .map(
-      (player) => `
-        <div class="description-row">
-          <strong>${escapeHtml(player.name)}</strong>
-          <span class="muted">${player.connected ? 'online' : 'offline'}</span>
-          <span>${player.score} điểm</span>
-        </div>
-      `
-    )
-    .join('');
+  el.waitingRoster.innerHTML = renderRosterRows(roomState?.players || []);
 }
 
 function renderDescriptionScreen() {
   const role = playerState.round?.role === 'SPY' ? 'GIÁN ĐIỆP' : 'DÂN THƯỜNG';
-  el.roleBadge.textContent = role;
-  el.secretKeyword.textContent = playerState.round?.keyword || '--';
+  const roundNumber = playerState.round?.number || 0;
   const submitted = Boolean(playerState.round?.description);
+
+  el.roleBadge.textContent = role;
+  el.roleBadge.classList.toggle('role-spy', playerState.round?.role === 'SPY');
+  el.secretKeyword.textContent = playerState.round?.keyword || '--';
   el.descriptionInput.disabled = submitted;
   el.descriptionForm.querySelector('button').disabled = submitted;
+
+  if (lastDescriptionRoundNumber !== roundNumber) {
+    lastDescriptionRoundNumber = roundNumber;
+    if (!submitted) el.descriptionInput.value = '';
+  }
+
   if (submitted) {
     el.descriptionInput.value = playerState.round.description.text;
-    setMessage(el.descriptionMessage, 'Mô tả của bạn đã được ghi nhận.');
+    setMessage(el.descriptionMessage, 'Mô tả của bạn đã được ghi nhận.', 'done');
+  } else {
+    setMessage(el.descriptionMessage, '');
   }
 }
 
 function renderSummary() {
-  el.descriptionSummary.innerHTML = renderDescriptionRows(roomState?.currentRound?.descriptions || []);
+  const rows = roomState?.currentRound?.descriptions || [];
+  el.descriptionSummary.innerHTML = rows.length
+    ? renderDescriptionRows(rows)
+    : '<div class="description-row"><span class="muted">Chưa có mô tả để hiển thị.</span></div>';
 }
 
 function renderVote() {
   const expected = playerState.round?.spyCount || 0;
-  el.voteMessage.textContent = `Chọn đúng ${expected} người nghi là Gián điệp.`;
   const voted = Boolean(playerState.round?.vote);
+  const previousSelection = new Set(
+    voted ? playerState.round.vote.targetIds : getCheckedVoteIds()
+  );
   const myId = playerState.player.id;
+
   el.voteGrid.innerHTML = (roomState?.players || [])
     .filter((player) => player.id !== myId)
-    .map(
-      (player) => `
-        <label class="vote-option">
-          <input class="vote-checkbox" type="checkbox" value="${player.id}" ${voted ? 'disabled' : ''}>
+    .map((player) => {
+      const checked = previousSelection.has(player.id);
+      return `
+        <label class="vote-option ${checked ? 'is-selected' : ''}">
+          <input class="vote-checkbox" type="checkbox" value="${player.id}" ${checked ? 'checked' : ''} ${voted ? 'disabled' : ''}>
           <span>${escapeHtml(player.name)}</span>
         </label>
-      `
-    )
+      `;
+    })
     .join('');
-  el.voteSubmit.disabled = voted;
+
+  refreshVoteStatus(expected, voted);
+}
+
+function refreshVoteStatus(requiredCount = playerState?.round?.spyCount || 0, voted = Boolean(playerState?.round?.vote)) {
+  document.querySelectorAll('.vote-option').forEach((option) => {
+    const input = option.querySelector('input');
+    option.classList.toggle('is-selected', Boolean(input?.checked));
+  });
+
+  const status = getCurrentVoteStatus(requiredCount, voted);
+  el.voteMeter.textContent = status.label;
+  el.voteSubmit.disabled = !status.canSubmit;
+  setMessage(el.voteMessage, status.message, status.tone);
+}
+
+function getCurrentVoteStatus(requiredCount = playerState?.round?.spyCount || 0, voted = Boolean(playerState?.round?.vote)) {
+  return ui.getVoteStatus({
+    selectedCount: getCheckedVoteIds().length,
+    requiredCount,
+    voted,
+  });
+}
+
+function getCheckedVoteIds() {
+  return [...document.querySelectorAll('.vote-checkbox:checked')].map((box) => box.value);
 }
 
 function renderResult() {
@@ -286,15 +318,30 @@ function renderPodium() {
 }
 
 function renderPhaseLine() {
-  const phase = roomState?.phase || 'setup';
-  const phases = [
-    ['lobby', 'Phòng chờ'],
-    ['description', 'Mô tả'],
-    ['voting', 'Vote'],
-    ['result', 'Kết quả'],
-  ];
-  el.phaseLine.innerHTML = phases
-    .map(([key, label]) => `<span class="${phase === key ? 'active' : ''}">${label}</span>`)
+  const phase = playerState?.phase || roomState?.phase || 'setup';
+  el.phaseLine.innerHTML = ui
+    .getPhaseSteps(phase)
+    .map(
+      (step) => `<span class="phase-step ${step.active ? 'active' : ''} ${step.complete ? 'complete' : ''}">${step.label}</span>`
+    )
+    .join('');
+}
+
+function renderRosterRows(rows) {
+  if (!rows.length) {
+    return '<div class="description-row"><span class="muted">Chưa có người chơi.</span></div>';
+  }
+
+  return rows
+    .map(
+      (player) => `
+        <div class="description-row">
+          <strong>${escapeHtml(player.name)}</strong>
+          <span class="muted">${player.connected ? 'online' : 'offline'}</span>
+          <span>${player.score} điểm</span>
+        </div>
+      `
+    )
     .join('');
 }
 
@@ -313,6 +360,10 @@ function renderDescriptionRows(rows) {
 }
 
 function renderRankRows(rows = [], startRank = 1) {
+  if (!rows.length) {
+    return '<div class="rank-row"><span class="muted">Chưa có dữ liệu.</span></div>';
+  }
+
   return rows
     .map(
       (row, index) => `
@@ -328,11 +379,14 @@ function renderRankRows(rows = [], startRank = 1) {
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const screen = document.getElementById(id);
+  if (screen) screen.classList.add('active');
 }
 
-function setMessage(node, text) {
+function setMessage(node, text, tone = '') {
   node.textContent = text || '';
+  node.classList.remove('tone-neutral', 'tone-warning', 'tone-ready', 'tone-done');
+  if (tone) node.classList.add(`tone-${tone}`);
 }
 
 function emitAck(event, payload) {

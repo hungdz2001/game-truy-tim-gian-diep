@@ -1,0 +1,46 @@
+/* Player-only polish layered over the shared mobile-first design system. */
+
+.player-shell {
+  overflow: hidden;
+}
+
+.player-shell .screen-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.player-shell .screen {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.player-shell .screen.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.player-shell .panel-content {
+  min-height: calc(100svh - 154px);
+}
+
+.player-shell .join-card,
+.player-shell .description-form,
+.player-shell .vote-form {
+  margin-top: auto;
+}
+
+.player-shell .phase-line.compact {
+  grid-template-columns: repeat(5, minmax(68px, 1fr));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-shell .screen,
+  .keyword,
+  button {
+    transition: none;
+  }
+}
