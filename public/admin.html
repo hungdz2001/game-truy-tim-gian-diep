@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Trò - Truy Tìm Gián Điệp</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1>Bàn Điều Phối</h1>
+          <span>Truy Tìm Gián Điệp</span>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span class="pill" id="admin-room-pill">ROOM --</span>
+        <span class="pill" id="admin-phase-pill">--</span>
+        <span class="pill timer" id="admin-timer-pill">--</span>
+      </div>
+    </header>
+
+    <section class="panel" id="auth-panel">
+      <h2>Đăng nhập quản trò</h2>
+      <form class="field-row" id="auth-form">
+        <div>
+          <label for="admin-pin">PIN</label>
+          <input id="admin-pin" type="password" value="2468" autocomplete="current-password">
+        </div>
+        <div style="align-self:end;">
+          <button type="submit">Đăng nhập</button>
+        </div>
+      </form>
+      <div class="message" id="auth-message"></div>
+    </section>
+
+    <section id="admin-app" style="display:none;">
+      <div class="layout">
+        <div>
+          <section class="panel">
+            <h2>Phòng chơi</h2>
+            <div class="room-code" id="room-code-display">--</div>
+            <form class="field-row" id="room-form" style="margin-top:12px;">
+              <div>
+                <label for="room-code-input">Mã phòng</label>
+                <input id="room-code-input" placeholder="SPY-2026">
+              </div>
+              <div style="align-self:end;">
+                <button type="submit">Tạo phòng</button>
+              </div>
+            </form>
+            <div class="action-row">
+              <button class="danger" id="reset-button" type="button">Reset game</button>
+              <button class="success" id="end-game-button" type="button">Tổng kết game</button>
+            </div>
+            <div class="message" id="room-message"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Bắt đầu vòng</h2>
+            <form class="stack" id="round-form">
+              <div class="field-row">
+                <div>
+                  <label for="spy-count">Số Gián điệp</label>
+                  <input id="spy-count" type="number" min="1" value="1">
+                </div>
+                <div>
+                  <label for="civilian-keyword">Từ khóa Dân thường</label>
+                  <input id="civilian-keyword" placeholder="Tuổi trẻ">
+                </div>
+              </div>
+              <div>
+                <label for="spy-keyword">Từ khóa Gián điệp</label>
+                <input id="spy-keyword" placeholder="Thanh xuân">
+              </div>
+              <button type="submit" id="start-round-button">Bắt đầu vòng</button>
+            </form>
+            <div class="action-row">
+              <button id="force-description-button" class="warning" type="button">Khóa mô tả</button>
+              <button id="open-vote-button" type="button">Mở vote</button>
+            </div>
+            <div class="action-row">
+              <button id="force-vote-button" class="warning" type="button">Khóa vote</button>
+              <button id="next-round-button" type="button">Sang vòng mới</button>
+            </div>
+            <div class="message" id="round-message"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Dữ liệu vòng</h2>
+            <div class="description-grid" id="admin-round-data"></div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="panel">
+            <h2>Người chơi</h2>
+            <div class="description-grid" id="admin-player-list"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Bảng xếp hạng</h2>
+            <div class="description-grid" id="admin-leaderboard"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

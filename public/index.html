@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Truy Tìm Gián Điệp</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell player-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1>Truy Tìm Gián Điệp</h1>
+          <span>Phòng điều tra nội bộ</span>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span class="pill" id="room-pill">ROOM --</span>
+        <span class="pill" id="score-pill">0 điểm</span>
+        <span class="pill timer" id="timer-pill">--</span>
+      </div>
+    </header>
+
+    <section class="panel screen active" id="screen-lobby">
+      <h2>Tham gia phòng</h2>
+      <form class="stack" id="join-form">
+        <div>
+          <label for="room-code">Mã phòng</label>
+          <input id="room-code" autocomplete="off" placeholder="SPY-2026">
+        </div>
+        <div>
+          <label for="player-name">Tên hiển thị</label>
+          <input id="player-name" autocomplete="name" placeholder="Nguyễn Văn A">
+        </div>
+        <button type="submit">Tham gia</button>
+      </form>
+      <div class="message" id="lobby-message"></div>
+    </section>
+
+    <section class="panel screen" id="screen-waiting">
+      <h2>Phòng chờ</h2>
+      <div class="phase-line" id="phase-line"></div>
+      <div class="message" id="waiting-message"></div>
+      <div class="description-grid" id="waiting-roster"></div>
+    </section>
+
+    <section class="panel screen" id="screen-description">
+      <h2>Vòng mô tả</h2>
+      <div class="secret-card" id="secret-card">
+        <div>
+          <div class="role-badge" id="role-badge">--</div>
+          <div class="muted">Nhấn giữ để xem từ khóa</div>
+          <div class="keyword" id="secret-keyword">--</div>
+        </div>
+      </div>
+      <form class="stack" id="description-form" style="margin-top:14px;">
+        <div>
+          <label for="description-input">Mô tả 1-2 từ</label>
+          <input id="description-input" maxlength="40" autocomplete="off" placeholder="Ví dụ: Sức sống">
+        </div>
+        <button type="submit">Nộp mô tả</button>
+      </form>
+      <div class="message" id="description-message"></div>
+    </section>
+
+    <section class="panel screen" id="screen-summary">
+      <h2>Bảng mô tả</h2>
+      <div class="description-grid" id="description-summary"></div>
+      <div class="message">Chờ quản trò mở cổng bình chọn.</div>
+    </section>
+
+    <section class="panel screen" id="screen-vote">
+      <h2>Bình chọn nghi phạm</h2>
+      <form class="stack" id="vote-form">
+        <div class="vote-grid" id="vote-grid"></div>
+        <button type="submit" id="vote-submit">Xác nhận bình chọn</button>
+      </form>
+      <div class="message" id="vote-message"></div>
+    </section>
+
+    <section class="panel screen" id="screen-result">
+      <h2>Kết quả vòng</h2>
+      <div class="message" id="spy-reveal"></div>
+      <div class="description-grid" id="round-result"></div>
+      <div style="margin-top:14px;">
+        <h2>Bảng điểm</h2>
+        <div class="description-grid" id="leaderboard"></div>
+      </div>
+    </section>
+
+    <section class="panel screen" id="screen-podium">
+      <h2>Bục vinh danh</h2>
+      <div class="podium" id="podium"></div>
+      <div class="description-grid" id="final-ranks"></div>
+    </section>
+  </main>
+
+  <script src="/player.js"></script>
+</body>
+</html>
